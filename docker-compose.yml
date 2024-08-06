@@ -1,0 +1,68 @@
+name: name63
+
+services:
+
+  laravel63:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: laravel63_container
+    restart: unless-stopped
+    tty: true # ini adalah opsi biar bisa dibuatkan terminal
+    volumes:
+      - .:/var/www/html
+      - laravel63-storage:/var/www/html/storage/app/public
+      # - ./php/local.ini:/usr/local/etc/php/conf.d/local.ini
+    networks:
+      - laravel63-network
+    depends_on:
+      - db63
+
+  webserver63: #?
+    image: nginx:stable-alpine
+    container_name: webserver63_container
+    restart: unless-stopped
+    tty: true
+    ports:
+      - '${APP_PORT:-8082}:80' # tadi error karena awalnya :-80} sedangkan 80 dipakai sama apache laragon
+      - "443:443" # SSL
+    volumes:
+      - .:/var/www/html
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
+      - laravel63-storage:/var/www/html/storage/app/public
+    networks:
+      - laravel63-network
+    depends_on:
+      - laravel63
+
+  # https://mariadb.com/kb/en/mariadb-server-docker-official-image-environment-variables/#mariadb_allow_empty_root_password-mysql_allow_empty_password
+  db63:
+    image: mariadb
+    container_name: db63_container
+    restart: unless-stopped
+    tty: true
+    ports:
+      - '${DB_PORT:-3306}:3306'
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_ALLOW_EMPTY_PASSWORD:
+      MYSQL_RANDOM_ROOT_PASSWORD:
+      MYSQL_ROOT_HOST: '%'
+      MYSQL_DATABASE: '${DB_DATABASE}'
+      MYSQL_USER: '${DB_USERNAME}'
+      MYSQL_PASSWORD: '${DB_PASSWORD}'
+    volumes:
+      - laravel63-mariadb-data:/var/lib/mysql
+      - ./mysql/my.cnf:/etc/mysql/my.cnf
+    networks:
+      - laravel63-network
+
+networks:
+  laravel63-network:
+      driver: bridge
+
+volumes:
+    laravel63-mariadb-data:
+        driver: local
+    laravel63-storage:
+        driver: local
